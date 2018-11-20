@@ -56,13 +56,3 @@ class ItemItemCollaborativeFiltering:
             values_arrays = [frozenset(a) for a in values_arrays]
 
         return values_arrays
-
-
-
-
-
-
-
-
-
-
