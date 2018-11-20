@@ -7,7 +7,7 @@ import numpy as np
 class ItemItemCollaborativeFiltering:
 
     def __init__(self):
-        return self
+        pass
 
     def df_to_dict(self, df, key, value, return_frozen_set=True):
         """
@@ -55,4 +55,4 @@ class ItemItemCollaborativeFiltering:
         if return_frozen_set:
             values_arrays = [frozenset(a) for a in values_arrays]
 
-        return values_arrays
+        return dict(zip(unique_keys, values_arrays))
