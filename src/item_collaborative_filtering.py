@@ -94,3 +94,12 @@ class ItemItemCollaborativeFiltering:
         common_users = len(item1_users.intersection(item2_users))
 
         return common_users
+
+    def __item_interaction_probability(self, df, item):
+        """
+        Computes the probability of a user interacting with an item (e.g. watching, purchasing, liking)
+        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param item:
+        :return: float, probability
+        """
+        return df.loc[df[self.item_column==item], self.user_column].nunique()/df[self.user_column].nunique()
