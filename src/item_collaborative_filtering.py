@@ -103,3 +103,20 @@ class ItemItemCollaborativeFiltering:
         :return: float, probability
         """
         return df.loc[df[self.item_column==item], self.user_column].nunique()/df[self.user_column].nunique()
+
+    def __count_users_interactions(self, df, item):
+        """
+        For ALL users of an item, it computes the number of other items that every user interacted with, APART from item
+        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param item:
+        :return: array of integers = number of interactions. length = nr of users that interacted with item.
+        """
+
+        interactions_count = df[df[self.item_column == item]].groupby(
+            self.user_column,
+            group_keys=False
+        )[self.item_column].transform(
+            'nunique'
+        ).values() - 1
+
+        return interactions_count
