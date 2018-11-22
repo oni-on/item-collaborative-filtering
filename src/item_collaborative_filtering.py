@@ -1,13 +1,18 @@
 """
 Item to Item Collaborative Filtering
+Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
 """
+from itertools import permutations
+
 import numpy as np
 
 
 class ItemItemCollaborativeFiltering:
 
-    def __init__(self):
-        pass
+    def __init__(self, item_column='item_id', user_column='user_id', transaction_column='transaction_id'):
+        self.item_column = item_column
+        self.user_column = user_column
+        self.transaction_column = transaction_column
 
     def df_to_dict(self, df, key, value, return_frozen_set=True):
         """
@@ -20,10 +25,15 @@ class ItemItemCollaborativeFiltering:
 
         with columns [key, value] to a dictionary with the following structure
 
+        where,
+
+        dict key = key column in dataframe
+        dict value =
+
         {
-        A: set(1, 2,),
-        B: set(3, 5),
-        C: set(3)
+        A: frozenset(1, 2,),
+        B: frozenset(3, 5),
+        C: frozenset(3)
         }
 
         OR (if return_frozen_set=False)
@@ -56,3 +66,15 @@ class ItemItemCollaborativeFiltering:
             values_arrays = [frozenset(a) for a in values_arrays]
 
         return dict(zip(unique_keys, values_arrays))
+
+    def __generate_item_pairs(self, df, item):
+        """
+        Creates permutations/pairs of two products
+        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param item: item that is paired with all other items, if None - all possible pairs are created
+        :return: list of tuples, length=df['item'].nunique()
+        """
+        if item is not None:
+            return [(item, paired_item) for paired_item in df[self.item_column].unique() if paired_item!=item]
+        else:
+            return list(permutations(df[self.item_column].unique(), 2))
