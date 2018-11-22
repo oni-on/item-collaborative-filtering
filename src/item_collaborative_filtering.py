@@ -78,3 +78,19 @@ class ItemItemCollaborativeFiltering:
             return [(item, paired_item) for paired_item in df[self.item_column].unique() if paired_item!=item]
         else:
             return list(permutations(df[self.item_column].unique(), 2))
+
+
+    def __count_common_item_pair_users(self, df, item1, item2):
+        """
+        Computes the number of users that interacted (e.g. watched, purchased) BOTH with item1 and item2
+        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param item1: item id
+        :param item2: item id
+        :return: int, number of users in common for the item pair (item1, item2)
+        """
+        item1_users = set(df.loc[df[self.item_column]==item1, self.user_column].unique())
+        item2_users = set(df.loc[df[self.item_column]==item2, self.user_column].unique())
+
+        common_users = len(item1_users.intersection(item2_users))
+
+        return common_users
