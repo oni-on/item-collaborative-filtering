@@ -122,3 +122,18 @@ class ItemItemCollaborativeFiltering:
         )[self.item_column].agg('nunique').values - 1
 
         return interactions_count
+
+    def __expected_common_item_pair_users(self, df, item_pair):
+        """
+        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param item_pair: tuple(item1, item2)
+        :return: float, expected number of users in common for the item pair (item1, item2)
+        """
+
+        item1, item2 = item_pair[0], item_pair[1]
+
+        product_probability = self.__item_interaction_probability(df, item2)
+
+        interactions_count = self.__count_users_interactions(df, item1)
+
+        return np.sum(1 - (1 - product_probability) ** interactions_count)
