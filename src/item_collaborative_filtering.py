@@ -4,7 +4,9 @@ Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
 """
 from itertools import permutations
 
+from joblib import Parallel
 import numpy as np
+import pandas as pd
 
 
 class ItemItemCollaborativeFiltering:
@@ -77,23 +79,24 @@ class ItemItemCollaborativeFiltering:
         if item is not None:
             return [(item, paired_item) for paired_item in df[self.item_column].unique() if paired_item!=item]
         else:
-            return list(permutations(df[self.item_column].unique(), 2))
+            return [(item, paired_item) for
+                    item, paired_item in permutations(df[self.item_column].unique(), 2) if paired_item!=item]
 
 
-    def __count_common_item_pair_users(self, df, item1, item2):
+    def __count_common_item_pair_users(self, df, item_pair):
         """
         Computes the number of users that interacted (e.g. watched, purchased) BOTH with item1 and item2
         :param df: dataframe with columns [user_id, item_id, transaction_id]
-        :param item1: item id
-        :param item2: item id
+        :param item_pair: tuple(item1, item2)
         :return: int, number of users in common for the item pair (item1, item2)
         """
+        item1, item2 = item_pair[0], item_pair[1]
         item1_users = set(df.loc[df[self.item_column]==item1, self.user_column].unique())
         item2_users = set(df.loc[df[self.item_column]==item2, self.user_column].unique())
 
         common_users = len(item1_users.intersection(item2_users))
 
-        return common_users
+        return item_pair, common_users
 
     def __item_interaction_probability(self, df, item):
         """
@@ -102,7 +105,7 @@ class ItemItemCollaborativeFiltering:
         :param item:
         :return: float, probability
         """
-        return df.loc[df[self.item_column==item], self.user_column].nunique()/df[self.user_column].nunique()
+        return df.loc[df[self.item_column]==item, self.user_column].nunique()/df[self.user_column].nunique()
 
     def __count_users_interactions(self, df, item):
         """
@@ -112,11 +115,10 @@ class ItemItemCollaborativeFiltering:
         :return: array of integers = number of interactions. length = nr of users that interacted with item.
         """
 
-        interactions_count = df[df[self.item_column == item]].groupby(
+        filtered_users = df.loc[df[self.item_column] == item, self.user_column]
+        interactions_count = df[df[self.user_column].isin(filtered_users)].groupby(
             self.user_column,
             group_keys=False
-        )[self.item_column].transform(
-            'nunique'
-        ).values() - 1
+        )[self.item_column].agg('nunique').values - 1
 
         return interactions_count
