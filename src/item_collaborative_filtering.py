@@ -137,3 +137,13 @@ class ItemItemCollaborativeFiltering:
         interactions_count = self.__count_users_interactions(df, item1)
 
         return np.sum(1 - (1 - product_probability) ** interactions_count)
+
+    @staticmethod
+    def __recommendations_score_function(expected_users, actual_users):
+        """
+        Given the actual and expected users of two items, it computes how related the items are
+        :param expected_users: np.array
+        :param actual_users: np.array
+        :return:
+        """
+        return (actual_users - expected_users) * np.log(actual_users + 0.1) / np.sqrt(expected_users)
