@@ -11,15 +11,14 @@ import pandas as pd
 
 class ItemItemCollaborativeFiltering:
 
-    def __init__(self, item_column='item_id', user_column='user_id', transaction_column='transaction_id'):
+    def __init__(self, item_column='item_id', user_column='user_id'):
         self.item_column = item_column
         self.user_column = user_column
-        self.transaction_column = transaction_column
 
     def __generate_item_pairs(self, df, item):
         """
         Creates permutations/pairs of two products
-        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param df: dataframe with columns [user_id, item_id]
         :param item: item that is paired with all other items, if None - all possible pairs are created
         :return: list of tuples, length=df['item'].nunique()
         """
@@ -33,7 +32,7 @@ class ItemItemCollaborativeFiltering:
     def __count_common_item_pair_users(self, df, item_pair):
         """
         Computes the number of users that interacted (e.g. watched, purchased) BOTH with item1 and item2
-        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param df: dataframe with columns [user_id, item_id]
         :param item_pair: tuple(item1, item2)
         :return: int, number of users in common for the item pair (item1, item2)
         """
@@ -48,7 +47,7 @@ class ItemItemCollaborativeFiltering:
     def __item_interaction_probability(self, df, item):
         """
         Computes the probability of a user interacting with an item (e.g. watching, purchasing, liking)
-        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param df: dataframe with columns [user_id, item_id]
         :param item:
         :return: float, probability
         """
@@ -57,7 +56,7 @@ class ItemItemCollaborativeFiltering:
     def __count_users_interactions(self, df, item):
         """
         For ALL users of an item, it computes the number of other items that every user interacted with, APART from item
-        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param df: dataframe with columns [user_id, item_id]
         :param item:
         :return: array of integers = number of interactions. length = nr of users that interacted with item.
         """
@@ -72,7 +71,7 @@ class ItemItemCollaborativeFiltering:
 
     def __expected_common_item_pair_users(self, df, item_pair):
         """
-        :param df: dataframe with columns [user_id, item_id, transaction_id]
+        :param df: dataframe with columns [user_id, item_id]
         :param item_pair: tuple(item1, item2)
         :return: float, expected number of users in common for the item pair (item1, item2)
         """
@@ -99,7 +98,7 @@ class ItemItemCollaborativeFiltering:
        """
        Computes recommendation strength for item pairs
        By default item=None, means recommendations are computed for all items
-       :param df:
+       :param df: dataframe with columns [user_id, item_id]
        :param item: item that is scored with all other items, if None - all possible item pairs are scored
        :param processes: (int) number of processes used for parallel computation
        :return: dataframe with columns [item, recommended_item, actual_common_users, expected_common_users, score]
@@ -143,4 +142,5 @@ class ItemItemCollaborativeFiltering:
        })
 
        return df
+
 
