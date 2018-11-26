@@ -4,7 +4,7 @@ Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
 """
 from itertools import permutations
 
-from joblib import Parallel
+from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
 
@@ -107,8 +107,10 @@ class ItemItemCollaborativeFiltering:
        item_pairs = self.__generate_item_pairs(df, item)
 
        # output: [((item1, item2), common_users)]
-       count_pair_users = [self.__count_common_item_pair_users(df, item_pair) for item_pair in item_pairs]
-
+       # count_pair_users = [self.__count_common_item_pair_users(df, item_pair) for item_pair in item_pairs]
+       count_pair_users = Parallel(n_jobs=processes)(
+           delayed(self.__count_common_item_pair_users)(df, item_pair) for item_pair in item_pairs
+       )
        # filter out item pairs with no users in common
        count_pair_users = list(
            filter(
@@ -123,10 +125,9 @@ class ItemItemCollaborativeFiltering:
 
        # output: [expected_users]
        # compute expected users for item pairs with at least 1 user in common
-       expected_pair_users = [self.__expected_common_item_pair_users(
-           df, item_pair
-       ) for item_pair in filtered_item_pairs]
-
+       expected_pair_users = Parallel(n_jobs=processes)(
+           delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
+       )
        # recommendation score function
        pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
 
@@ -142,3 +143,4 @@ class ItemItemCollaborativeFiltering:
        })
 
        return df
+
