@@ -130,6 +130,7 @@ class ItemItemCollaborativeFiltering:
        count_pair_users = Parallel(n_jobs=processes)(
            delayed(self.__count_common_item_pair_users)(df, item_pair) for item_pair in item_pairs
        )
+       
        # filter out item pairs with no users in common
        count_pair_users = list(
            filter(
@@ -139,14 +140,14 @@ class ItemItemCollaborativeFiltering:
        )
 
        # extract item pair, and user count
-       filtered_item_pairs = [item_pair[0] for item_pair in count_pair_users]
-       count_pair_users = [users[1] for users in count_pair_users]
+       filtered_item_pairs, count_pair_users = zip(*count_pair_users)
 
        # output: [expected_users]
        # compute expected users for item pairs with at least 1 user in common
        expected_pair_users = Parallel(n_jobs=processes)(
            delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
        )
+
        # recommendation score function
        pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
 
