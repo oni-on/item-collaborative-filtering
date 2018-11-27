@@ -1,10 +1,12 @@
 # item-item-collaborative-filtering
-Implementation of Amazon's Item-Item Collaborative filtering
+Implementation of Amazon's [Item-Item Collaborative Filtering](https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf)
 
-## Set up
-Python 3.7.1
+## Requirements
+* Python 3.6+
+* Virtualenv
+* Pip3
 
-## Environment
+## Setup
 Create the environment and install the packages listed in `requirements.txt`
 with the following command:
 

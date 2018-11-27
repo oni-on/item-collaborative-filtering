@@ -26,23 +26,23 @@ class ItemItemCollaborativeFiltering:
             return [(item, paired_item) for paired_item in df[self.item_column].unique() if paired_item!=item]
         else:
             return [(item, paired_item) for
-                    item, paired_item in permutations(df[self.item_column].unique(), 2) if paired_item!=item]
+                    item, paired_item in permutations(df[self.item_column].unique(), 2)]
 
 
     def __count_common_item_pair_users(self, df, item_pair):
         """
-        Computes the number of users that interacted (e.g. watched, purchased) BOTH with item1 and item2
+        Computes the number of users that interacted (e.g. watched, purchased) with BOTH items in a pair
         :param df: dataframe with columns [user_id, item_id]
         :param item_pair: tuple(item1, item2)
         :return: int, number of users in common for the item pair (item1, item2)
         """
-        item1, item2 = item_pair[0], item_pair[1]
+        item1, item2 = item_pair
         item1_users = set(df.loc[df[self.item_column]==item1, self.user_column].unique())
         item2_users = set(df.loc[df[self.item_column]==item2, self.user_column].unique())
 
-        common_users = len(item1_users.intersection(item2_users))
+        common_users_count = len(item1_users.intersection(item2_users))
 
-        return item_pair, common_users
+        return item_pair, common_users_count
 
     def __item_interaction_probability(self, df, item):
         """
@@ -62,6 +62,8 @@ class ItemItemCollaborativeFiltering:
         """
 
         filtered_users = df.loc[df[self.item_column] == item, self.user_column]
+
+        # subtract 1 to count number of interactions with other items DIFFERENT from item
         interactions_count = df[df[self.user_column].isin(filtered_users)].groupby(
             self.user_column,
             group_keys=False
@@ -71,6 +73,25 @@ class ItemItemCollaborativeFiltering:
 
     def __expected_common_item_pair_users(self, df, item_pair):
         """
+        item_pair consists of (item1, item2)
+
+        For users of item 1, it computes the EXPECTED number of users who interact (e.g. watch, purchase) with BOTH
+        item1 and item2
+
+        Mathematical explanation (bear with me...):
+        Keep in mind that:  When two events, A and B, are independent, the probability of both occurring is:
+        P(A and B) = P(A)xP(B)
+
+        Given the pair (item1, item2):
+        - the probability of a user interacting with item2 is p2 = (Users of item2)/All Users
+        - the probability of NOT interacting with item2 is (1-p2)
+        - if interaction events are assumed to be independent, the probability of NOT interacting with item2 for ONE
+        user of item1 is (1-p2)^interactions_count. This follows from (1-p2)x...x(1-p2) (interactions_count times)
+        - the inverse of the above is [1 - (1-p2)^interactions_count] a.k.a the probability of ONE item1 user
+        interacting with item2 in interactions_count interactions of this user
+        - the expected value of the above expression for ALL users is sum[1 - (1-p2)^interactions_count], where the sum
+        is taken across all users that interacted with item1
+
         :param df: dataframe with columns [user_id, item_id]
         :param item_pair: tuple(item1, item2)
         :return: float, expected number of users in common for the item pair (item1, item2)
@@ -106,7 +127,6 @@ class ItemItemCollaborativeFiltering:
        item_pairs = self.__generate_item_pairs(df, item)
 
        # output: [((item1, item2), common_users)]
-       # count_pair_users = [self.__count_common_item_pair_users(df, item_pair) for item_pair in item_pairs]
        count_pair_users = Parallel(n_jobs=processes)(
            delayed(self.__count_common_item_pair_users)(df, item_pair) for item_pair in item_pairs
        )
@@ -130,8 +150,7 @@ class ItemItemCollaborativeFiltering:
        # recommendation score function
        pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
 
-       items = [item[0] for item in filtered_item_pairs]
-       recommended_items = [item[1] for item in filtered_item_pairs]
+       items, recommended_items = zip(*filtered_item_pairs)
 
        df = pd.DataFrame({
            'item': items,
@@ -142,5 +161,3 @@ class ItemItemCollaborativeFiltering:
        })
 
        return df
-
-

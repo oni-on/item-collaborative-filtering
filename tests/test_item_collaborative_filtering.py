@@ -39,5 +39,3 @@ class TestItemItemCollaborativeFiltering(unittest.TestCase):
 
     def tearDown(self):
         pass
-
-
