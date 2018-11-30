@@ -81,7 +81,7 @@ class ItemItemCollaborativeFiltering:
         """
         For ALL users computes the number of items that every user interacted with, APART from item in the df row
         :param df: dataframe with columns [user_id, item_id]
-        :return: pandas series with index = user_id, value = number of interactions
+        :return: dictionary with key = user_id, value = number of interactions
         """
 
         # subtract 1 to count number of interactions with other items DIFFERENT from item
@@ -89,7 +89,7 @@ class ItemItemCollaborativeFiltering:
             self.user_column
         )[self.item_column].agg('nunique') - 1
 
-        self.user_interactions = interactions_count
+        self.user_interactions = interactions_count.to_dict()
 
     def __count_users_interactions(self, df, item):
         """
@@ -101,7 +101,7 @@ class ItemItemCollaborativeFiltering:
 
         try:
             filtered_users = df.loc[df[self.item_column] == item, self.user_column].values
-            interactions_count = self.user_interactions.loc[filtered_users].values
+            interactions_count = np.array([self.user_interactions[user] for user in filtered_users])
             return interactions_count
         except AttributeError:
             "Extract user interactions first, using __user_interactions()"
