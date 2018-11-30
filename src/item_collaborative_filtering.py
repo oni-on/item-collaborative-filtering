@@ -66,7 +66,7 @@ class ItemItemCollaborativeFiltering:
             common_users_count = len(item1_users.intersection(item2_users))
             return item_pair, common_users_count
         except AttributeError:
-            "You need to extract item users first, using __item_users()"
+            "Extract item users first, using __item_users()"
 
     def __item_interaction_probability(self, df, item):
         """
@@ -77,23 +77,34 @@ class ItemItemCollaborativeFiltering:
         """
         return df.loc[df[self.item_column] == item, self.user_column].nunique()/df[self.user_column].nunique()
 
-    def __count_users_interactions(self, df, item):
+    def __user_interactions(self, df):
         """
-        For ALL users of an item, it computes the number of other items that every user interacted with, APART from item
+        For ALL users computes the number of items that every user interacted with, APART from item in the df row
         :param df: dataframe with columns [user_id, item_id]
-        :param item:
-        :return: array of integers = number of interactions. length = nr of users that interacted with item.
+        :return: pandas series with index = user_id, value = number of interactions
         """
-
-        filtered_users = df.loc[df[self.item_column] == item, self.user_column]
 
         # subtract 1 to count number of interactions with other items DIFFERENT from item
-        interactions_count = df[df[self.user_column].isin(filtered_users)].groupby(
-            self.user_column,
-            group_keys=False
-        )[self.item_column].agg('nunique').values - 1
+        interactions_count = df.groupby(
+            self.user_column
+        )[self.item_column].agg('nunique') - 1
 
-        return interactions_count
+        self.user_interactions = interactions_count
+
+    def __count_users_interactions(self, df, item):
+        """
+        For ALL users of an item, it looks up the number of other items that every user interacted with, APART from item
+        :param df: dataframe with columns [user_id, item_id]
+        :param item:
+        :return: array of integers with number of interactions per user. length = nr of users that interacted with item.
+        """
+
+        try:
+            filtered_users = df.loc[df[self.item_column] == item, self.user_column].values
+            interactions_count = self.user_interactions.loc[filtered_users].values
+            return interactions_count
+        except AttributeError:
+            "Extract user interactions first, using __user_interactions()"
 
     @timefunc
     def __expected_common_item_pair_users(self, df, item_pair):
@@ -169,6 +180,8 @@ class ItemItemCollaborativeFiltering:
 
         # extract item pair, and user count
         filtered_item_pairs, count_pair_users = zip(*count_pair_users)
+
+        self.__user_interactions(df)
 
         # output: [expected_users]
         # compute expected users for item pairs with at least 1 user in common
