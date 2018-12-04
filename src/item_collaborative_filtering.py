@@ -3,7 +3,6 @@ Item to Item Collaborative Filtering
 Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
 """
 from itertools import permutations
-import time
 
 from joblib import Parallel, delayed
 import numpy as np
