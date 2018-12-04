@@ -38,6 +38,7 @@ class ItemItemCollaborativeFiltering:
             return [(item, paired_item) for
                     item, paired_item in permutations(df[self.item_column].unique(), 2)]
 
+    @timefunc
     def __item_users(self, df):
         """
         Looks up the users that interacted (e.g. watched, purchased) with an item
@@ -53,6 +54,7 @@ class ItemItemCollaborativeFiltering:
 
         self.item_users = item_users
 
+    @timefunc
     def __count_common_item_pair_users(self, item_pair):
         """
         Computes the number of users that interacted (e.g. watched, purchased) with BOTH items in a pair
@@ -68,15 +70,34 @@ class ItemItemCollaborativeFiltering:
         except AttributeError:
             "Extract item users first, using __item_users()"
 
-    def __item_interaction_probability(self, df, item):
+    @timefunc
+    def __item_probabilities(self, df):
         """
         Computes the probability of a user interacting with an item (e.g. watching, purchasing, liking)
-        :param df: dataframe with columns [user_id, item_id]
-        :param item:
+        :param df:  dataframe with columns [user_id, item_id]
+        :return: dictionary with key=item_id, value = interaction probability (float)
+        """
+
+        item_probabilities = {
+            item: df.loc[df[self.item_column] == item, self.user_column].nunique()/df[self.user_column].nunique()
+            for item in df[self.item_column].unique()
+        }
+
+        self.item_probabilities = item_probabilities
+
+    @timefunc
+    def __item_interaction_probability(self, item):
+        """
+        Looks up the probability of a user interacting with an item (e.g. watching, purchasing, liking)
+        :param item: item_id
         :return: float, probability
         """
-        return df.loc[df[self.item_column] == item, self.user_column].nunique()/df[self.user_column].nunique()
+        try:
+            return self.item_probabilities[item]
+        except AttributeError:
+            "Extract item probabilities first, using __item_probabilities()"
 
+    @timefunc
     def __user_interactions(self, df):
         """
         For ALL users computes the number of items that every user interacted with, APART from item in the df row
@@ -91,6 +112,7 @@ class ItemItemCollaborativeFiltering:
 
         self.user_interactions = interactions_count.to_dict()
 
+    @timefunc
     def __count_users_interactions(self, df, item):
         """
         For ALL users of an item, it looks up the number of other items that every user interacted with, APART from item
@@ -135,7 +157,7 @@ class ItemItemCollaborativeFiltering:
 
         item1, item2 = item_pair
 
-        product_probability = self.__item_interaction_probability(df, item2)
+        product_probability = self.__item_interaction_probability(item2)
 
         interactions_count = self.__count_users_interactions(df, item1)
 
@@ -181,6 +203,7 @@ class ItemItemCollaborativeFiltering:
         # extract item pair, and user count
         filtered_item_pairs, count_pair_users = zip(*count_pair_users)
 
+        self.__item_probabilities(df)
         self.__user_interactions(df)
 
         # output: [expected_users]
