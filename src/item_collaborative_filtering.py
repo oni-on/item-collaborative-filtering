@@ -23,53 +23,98 @@ class ItemItemCollaborativeFiltering:
         :return: list of tuples, length=df['item'].nunique()
         """
         if item is not None:
-            return [(item, paired_item) for paired_item in df[self.item_column].unique() if paired_item!=item]
+            return [(item, paired_item) for paired_item in df[self.item_column].unique() if paired_item != item]
         else:
             return [(item, paired_item) for
                     item, paired_item in permutations(df[self.item_column].unique(), 2)]
 
+    def __calculate_item_users(self, df):
+        """
+        Creates a set of the users that interacted (e.g. watched, purchased) with an item
+        Sets self.item_users to dictionary {item1: set(user1, user2, ...), item2: set()...}
+        :param df: dataframe with columns [user_id, item_id]
+        """
 
-    def __count_common_item_pair_users(self, df, item_pair):
+        item_users = df.groupby(
+            self.item_column
+        ).agg(
+            {
+                self.user_column: lambda x: set(x)
+            }
+        ).to_dict()[self.user_column]
+
+        self.item_users = item_users
+
+    def __count_common_item_pair_users(self, item_pair):
         """
         Computes the number of users that interacted (e.g. watched, purchased) with BOTH items in a pair
-        :param df: dataframe with columns [user_id, item_id]
         :param item_pair: tuple(item1, item2)
-        :return: int, number of users in common for the item pair (item1, item2)
+        :return: (tuple, int) = (item_pair, number of users in common for the item pair)
         """
         item1, item2 = item_pair
-        item1_users = set(df.loc[df[self.item_column]==item1, self.user_column].unique())
-        item2_users = set(df.loc[df[self.item_column]==item2, self.user_column].unique())
+        try:
+            item1_users = self.item_users[item1]
+            item2_users = self.item_users[item2]
+            common_users_count = len(item1_users.intersection(item2_users))
+            return item_pair, common_users_count
+        except AttributeError:
+            "Extract item users first, using __item_users()"
 
-        common_users_count = len(item1_users.intersection(item2_users))
-
-        return item_pair, common_users_count
-
-    def __item_interaction_probability(self, df, item):
+    def __calculate_item_probabilities(self, df):
         """
         Computes the probability of a user interacting with an item (e.g. watching, purchasing, liking)
-        :param df: dataframe with columns [user_id, item_id]
-        :param item:
+        Sets self.item_probabilities to dictionary with key=item_id, value = interaction probability (float)
+        :param df:  dataframe with columns [user_id, item_id]
+        """
+        item_probabilities = (df.groupby(
+            self.item_column
+        ).agg(
+            {
+                self.user_column: 'nunique'
+            }
+        )/df[self.user_column].nunique()).to_dict()[self.user_column]
+
+        self.item_probabilities = item_probabilities
+
+    def __item_interaction_probability(self, item):
+        """
+        Looks up the probability of a user interacting with an item (e.g. watching, purchasing, liking)
+        :param item: item_id
         :return: float, probability
         """
-        return df.loc[df[self.item_column]==item, self.user_column].nunique()/df[self.user_column].nunique()
+        try:
+            return self.item_probabilities[item]
+        except AttributeError:
+            "Extract item probabilities first, using __item_probabilities()"
+
+    def __calculate_user_interactions(self, df):
+        """
+        For ALL users computes the number of items that every user interacted with, APART from item in the df row
+        Sets self.user_interactions to a dictionary with key = user_id, value = number of interactions
+        :param df: dataframe with columns [user_id, item_id]
+        """
+
+        # subtract 1 to count number of interactions with other items DIFFERENT from item
+        interactions_count = df.groupby(
+            self.user_column
+        )[self.item_column].agg('nunique') - 1
+
+        self.user_interactions = interactions_count.to_dict()
 
     def __count_users_interactions(self, df, item):
         """
-        For ALL users of an item, it computes the number of other items that every user interacted with, APART from item
+        For ALL users of an item, it looks up the number of other items that every user interacted with, APART from item
         :param df: dataframe with columns [user_id, item_id]
-        :param item:
-        :return: array of integers = number of interactions. length = nr of users that interacted with item.
+        :param item: the item_id to be looked up
+        :return: array of integers with number of interactions per user. length = nr of users that interacted with item.
         """
 
-        filtered_users = df.loc[df[self.item_column] == item, self.user_column]
-
-        # subtract 1 to count number of interactions with other items DIFFERENT from item
-        interactions_count = df[df[self.user_column].isin(filtered_users)].groupby(
-            self.user_column,
-            group_keys=False
-        )[self.item_column].agg('nunique').values - 1
-
-        return interactions_count
+        try:
+            filtered_users = df.loc[df[self.item_column] == item, self.user_column].values
+            interactions_count = np.array([self.user_interactions[user] for user in filtered_users])
+            return interactions_count
+        except AttributeError:
+            "Extract user interactions first, using __user_interactions()"
 
     def __expected_common_item_pair_users(self, df, item_pair):
         """
@@ -97,9 +142,9 @@ class ItemItemCollaborativeFiltering:
         :return: float, expected number of users in common for the item pair (item1, item2)
         """
 
-        item1, item2 = item_pair[0], item_pair[1]
+        item1, item2 = item_pair
 
-        product_probability = self.__item_interaction_probability(df, item2)
+        product_probability = self.__item_interaction_probability(item2)
 
         interactions_count = self.__count_users_interactions(df, item1)
 
@@ -116,49 +161,53 @@ class ItemItemCollaborativeFiltering:
         return (actual_users - expected_users) * np.log(actual_users + 0.1) / np.sqrt(expected_users)
 
     def fit_recommendations(self, df, item=None, processes=2):
-       """
-       Computes recommendation strength for item pairs
-       By default item=None, means recommendations are computed for all items
-       :param df: dataframe with columns [user_id, item_id]
-       :param item: item that is scored with all other items, if None - all possible item pairs are scored
-       :param processes: (int) number of processes used for parallel computation
-       :return: dataframe with columns [item, recommended_item, actual_common_users, expected_common_users, score]
-       """
-       item_pairs = self.__generate_item_pairs(df, item)
+        """
+        Computes recommendation strength for item pairs
+        By default item=None, means recommendations are computed for all items
+        :param df: dataframe with columns [user_id, item_id]
+        :param item: item that is scored with all other items, if None - all possible item pairs are scored
+        :param processes: (int) number of processes used for parallel computation
+        :return: dataframe with columns [item, recommended_item, actual_common_users, expected_common_users, score]
+        """
+        item_pairs = self.__generate_item_pairs(df, item)
 
-       # output: [((item1, item2), common_users)]
-       count_pair_users = Parallel(n_jobs=processes)(
-           delayed(self.__count_common_item_pair_users)(df, item_pair) for item_pair in item_pairs
-       )
-       
-       # filter out item pairs with no users in common
-       count_pair_users = list(
+        self.__calculate_item_users(df)
+        self.__calculate_item_probabilities(df)
+        self.__calculate_user_interactions(df)
+
+        # output: [((item1, item2), common_users)]
+        count_pair_users = Parallel(n_jobs=processes)(
+           delayed(self.__count_common_item_pair_users)(item_pair) for item_pair in item_pairs
+        )
+
+        # filter out item pairs with no users in common
+        count_pair_users = list(
            filter(
-           lambda x: x[1] > 0,
+               lambda x: x[1] > 0,
                count_pair_users
            )
-       )
+        )
 
-       # extract item pair, and user count
-       filtered_item_pairs, count_pair_users = zip(*count_pair_users)
+        # extract item pair, and user count
+        filtered_item_pairs, count_pair_users = zip(*count_pair_users)
 
-       # output: [expected_users]
-       # compute expected users for item pairs with at least 1 user in common
-       expected_pair_users = Parallel(n_jobs=processes)(
+        # output: [expected_users]
+        # compute expected users for item pairs with at least 1 user in common
+        expected_pair_users = Parallel(n_jobs=processes)(
            delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
-       )
+        )
 
-       # recommendation score function
-       pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
+        # recommendation score function
+        pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
 
-       items, recommended_items = zip(*filtered_item_pairs)
+        items, recommended_items = zip(*filtered_item_pairs)
 
-       df = pd.DataFrame({
+        df = pd.DataFrame({
            'item': items,
            'recommended_item': recommended_items,
            'count_common_users': count_pair_users,
            'expected_common_users': expected_pair_users,
            'score': pair_score
-       })
+        })
 
-       return df
+        return df
