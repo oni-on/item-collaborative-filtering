@@ -28,11 +28,11 @@ class ItemItemCollaborativeFiltering:
             return [(item, paired_item) for
                     item, paired_item in permutations(df[self.item_column].unique(), 2)]
 
-    def __item_users(self, df):
+    def __calculate_item_users(self, df):
         """
-        Looks up the users that interacted (e.g. watched, purchased) with an item
+        Creates a set of the users that interacted (e.g. watched, purchased) with an item
+        Sets self.item_users to dictionary {item1: set(user1, user2, ...), item2: set()...}
         :param df: dataframe with columns [user_id, item_id]
-        :return: dictionary {item: set(user1, user2, ...)}
         """
 
         item_users = df.groupby(
@@ -49,7 +49,7 @@ class ItemItemCollaborativeFiltering:
         """
         Computes the number of users that interacted (e.g. watched, purchased) with BOTH items in a pair
         :param item_pair: tuple(item1, item2)
-        :return: int, number of users in common for the item pair (item1, item2)
+        :return: (tuple, int) = (item_pair, number of users in common for the item pair)
         """
         item1, item2 = item_pair
         try:
@@ -60,19 +60,19 @@ class ItemItemCollaborativeFiltering:
         except AttributeError:
             "Extract item users first, using __item_users()"
 
-    def __item_probabilities(self, df):
+    def __calculate_item_probabilities(self, df):
         """
         Computes the probability of a user interacting with an item (e.g. watching, purchasing, liking)
+        Sets self.item_probabilities to dictionary with key=item_id, value = interaction probability (float)
         :param df:  dataframe with columns [user_id, item_id]
-        :return: dictionary with key=item_id, value = interaction probability (float)
         """
-        item_probabilities = (
-                df.groupby(
-                    self.item_column
-                ).agg(
-                    {self.user_column: 'nunique'}
-                )/df[self.user_column].nunique()
-        ).to_dict()[self.user_column]
+        item_probabilities = (df.groupby(
+            self.item_column
+        ).agg(
+            {
+                self.user_column: 'nunique'
+            }
+        )/df[self.user_column].nunique()).to_dict()[self.user_column]
 
         self.item_probabilities = item_probabilities
 
@@ -87,11 +87,11 @@ class ItemItemCollaborativeFiltering:
         except AttributeError:
             "Extract item probabilities first, using __item_probabilities()"
 
-    def __user_interactions(self, df):
+    def __calculate_user_interactions(self, df):
         """
         For ALL users computes the number of items that every user interacted with, APART from item in the df row
+        Sets self.user_interactions to a dictionary with key = user_id, value = number of interactions
         :param df: dataframe with columns [user_id, item_id]
-        :return: dictionary with key = user_id, value = number of interactions
         """
 
         # subtract 1 to count number of interactions with other items DIFFERENT from item
@@ -105,7 +105,7 @@ class ItemItemCollaborativeFiltering:
         """
         For ALL users of an item, it looks up the number of other items that every user interacted with, APART from item
         :param df: dataframe with columns [user_id, item_id]
-        :param item:
+        :param item: the item_id to be looked up
         :return: array of integers with number of interactions per user. length = nr of users that interacted with item.
         """
 
@@ -171,9 +171,9 @@ class ItemItemCollaborativeFiltering:
         """
         item_pairs = self.__generate_item_pairs(df, item)
 
-        self.__item_users(df)
-        self.__item_probabilities(df)
-        self.__user_interactions(df)
+        self.__calculate_item_users(df)
+        self.__calculate_item_probabilities(df)
+        self.__calculate_user_interactions(df)
 
         # output: [((item1, item2), common_users)]
         count_pair_users = Parallel(n_jobs=processes)(
