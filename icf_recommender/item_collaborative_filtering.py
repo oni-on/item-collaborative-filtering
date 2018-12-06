@@ -6,7 +6,6 @@ Item Based Collaborative Filtering
 
 from itertools import permutations
 
-from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
 
@@ -190,13 +189,12 @@ class ItemCollaborativeFiltering:
         """
         return (actual_users - expected_users) * np.log(actual_users + 0.1) / np.sqrt(expected_users)
 
-    def fit_recommendations(self, df, item=None, processes=2):
+    def fit_recommendations(self, df, item=None):
         """
         Computes recommendation strength for item pairs
         By default item=None, means recommendations are computed for all items
         :param df: dataframe with columns [user_id, item_id]
         :param item: item that is scored with all other items, if None - all possible item pairs are scored
-        :param processes: (int) number of processes used for parallel computation
         :return: dataframe with columns [item, recommended_item, actual_common_users, expected_common_users, score]
         """
         item_pairs = self.__generate_item_pairs(df, item)
@@ -207,9 +205,6 @@ class ItemCollaborativeFiltering:
 
         # output: [((item1, item2), common_users)]
         count_pair_users = [self.__count_common_item_pair_users(item_pair) for item_pair in item_pairs]
-        # count_pair_users = Parallel(n_jobs=processes)(
-        #    delayed(self.__count_common_item_pair_users)(item_pair) for item_pair in item_pairs
-        # )
 
         # filter out item pairs with no users in common
         count_pair_users = list(
@@ -226,9 +221,6 @@ class ItemCollaborativeFiltering:
         # compute expected users for item pairs with at least 1 user in common
         expected_pair_users = [self.__expected_common_item_pair_users(df, item_pair)
                                for item_pair in filtered_item_pairs]
-        # expected_pair_users = Parallel(n_jobs=processes)(
-        #    delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
-        # )
 
         # recommendation score function
         pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
