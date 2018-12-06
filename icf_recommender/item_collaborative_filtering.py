@@ -31,6 +31,14 @@ class ItemCollaborativeFiltering:
 
     Examples
     --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> from icf_recommender.item_collaborative_filtering import ItemCollaborativeFiltering
+    >>> df = pd.read_csv("https://raw.githubusercontent.com/zygmuntz/goodbooks-10k/master/ratings.csv")
+    >>> df['liked'] = np.where(df.rating >= 5, 1, 0)
+    >>> df_liked = df.loc[df.liked == 1, ["user_id", "book_id"]]
+    >>> recommender = ItemCollaborativeFiltering(item_column='book_id')
+    >>> df_recommendations = recommender.fit_recommendations(df=df_liked, item=4081)
 
     Attributes
     ----------
@@ -41,6 +49,10 @@ class ItemCollaborativeFiltering:
     """
 
     def __init__(self, item_column='item_id', user_column='user_id'):
+        """
+        :param item_column: str, default='item_id'. The name of the item id column in the input dataframe
+        :param user_column: str, default='user_id'. The name of the user id column in the input dataframe
+        """
         self.item_column = item_column
         self.user_column = user_column
 
