@@ -1,7 +1,10 @@
 """
-Item to Item Collaborative Filtering
+Item Based Collaborative Filtering
 Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
 """
+# Author Oni On <oni.on.qepa@gmail.com>
+
+
 from itertools import permutations
 
 from joblib import Parallel, delayed
@@ -9,7 +12,10 @@ import numpy as np
 import pandas as pd
 
 
-class ItemItemCollaborativeFiltering:
+class ItemCollaborativeFiltering:
+    """
+    It
+    """
 
     def __init__(self, item_column='item_id', user_column='user_id'):
         self.item_column = item_column
@@ -176,9 +182,10 @@ class ItemItemCollaborativeFiltering:
         self.__calculate_user_interactions(df)
 
         # output: [((item1, item2), common_users)]
-        count_pair_users = Parallel(n_jobs=processes)(
-           delayed(self.__count_common_item_pair_users)(item_pair) for item_pair in item_pairs
-        )
+        count_pair_users = [self.__count_common_item_pair_users(item_pair) for item_pair in item_pairs]
+        # count_pair_users = Parallel(n_jobs=processes)(
+        #    delayed(self.__count_common_item_pair_users)(item_pair) for item_pair in item_pairs
+        # )
 
         # filter out item pairs with no users in common
         count_pair_users = list(
@@ -193,9 +200,11 @@ class ItemItemCollaborativeFiltering:
 
         # output: [expected_users]
         # compute expected users for item pairs with at least 1 user in common
-        expected_pair_users = Parallel(n_jobs=processes)(
-           delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
-        )
+        expected_pair_users = [self.__expected_common_item_pair_users(df, item_pair)
+                               for item_pair in filtered_item_pairs]
+        # expected_pair_users = Parallel(n_jobs=processes)(
+        #    delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
+        # )
 
         # recommendation score function
         pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
