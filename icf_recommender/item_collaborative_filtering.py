@@ -1,9 +1,8 @@
 """
 Item Based Collaborative Filtering
-Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
 """
-# Author Oni On <oni.on.qepa@gmail.com>
 
+# Author Oni On <oni.on.qepa@gmail.com>
 
 from itertools import permutations
 
@@ -14,7 +13,32 @@ import pandas as pd
 
 class ItemCollaborativeFiltering:
     """
-    It
+    Item Based Collaborative Filtering: a recommendation algorithm by Amazon
+
+    In a nutshell, the algorithm looks as follows:
+
+    1. Create pairs of items (X, Y) using all the items in the catalog.
+    2. For every item pair (X, Y) compute the Rule Strength for the statement
+    "Users who viewed/watched/bought X, also viewed/watched/bought Y"
+    3. For a given item X, the items Y are sorted according to Rule Strength in a decreasing order.
+    The top items Y are recommended to all users who viewed/watched/bought product X.
+
+    For more details check the project `Wiki <https://github.com/oni-on/item-collaborative-filtering/wiki>`
+
+    Parameters
+    ----------
+    item_column: str, default='item_id'. The name of the item id column in the dataframe
+    user_column: str, default='user_id'. The name of the user id column in the dataframe
+
+    Examples
+    --------
+
+    Attributes
+    ----------
+
+    References
+    ----------
+    https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
     """
 
     def __init__(self, item_column='item_id', user_column='user_id'):
