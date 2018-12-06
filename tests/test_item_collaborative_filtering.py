@@ -18,23 +18,23 @@ class TestItemItemCollaborativeFiltering(unittest.TestCase):
         recommendations = self.item_collaborative_filtering.fit_recommendations(df)
 
         self.assertTrue(
-            (recommendations.item.values==np.array(['A', 'B'])).all(),
+            (recommendations.item.values == np.array(['A', 'B'])).all(),
             msg="Recommendations dataframe 'item' column values not as expected"
         )
         self.assertTrue(
-            (recommendations.recommended_item.values==np.array(['B', 'A'])).all(),
+            (recommendations.recommended_item.values == np.array(['B', 'A'])).all(),
             msg="Recommendations dataframe 'recommended_item' column values not as expected"
         )
         self.assertTrue(
-            (recommendations.count_common_users.values==np.array([2, 2])).all(),
+            (recommendations.count_common_users.values == np.array([2, 2])).all(),
             msg="__count_common_item_pair_users() - unexpected results"
         )
         self.assertTrue(
-            (recommendations.expected_common_users.values==np.array([6/5, 8/5])).all(),
+            (recommendations.expected_common_users.values == np.array([6/5, 8/5])).all(),
             msg="__expected_common_item_pair_users() - unexpected results"
         )
         self.assertTrue(
-            (recommendations.score.values.round(4)==np.array([0.5418, 0.2346])).all(),
+            (recommendations.score.values.round(4) == np.array([0.5418, 0.2346])).all(),
             msg="recommendations scores - unexpected results"
         )
 
