@@ -38,5 +38,17 @@ class TestItemItemCollaborativeFiltering(unittest.TestCase):
             msg="recommendations scores - unexpected results"
         )
 
+    def test_recommend(self):
+        df = pd.DataFrame({'item_id': ['A', 'A', 'A', 'A', 'B', 'B', 'B'],
+                           'user_id': [1, 2, 3, 4, 1, 2, 5]})
+
+        df_recommendations = self.item_collaborative_filtering.fit_recommendations(df)
+
+        top_recommendations = self.item_collaborative_filtering.recommend(df_recommendations, 'A')
+        self.assertTrue(
+            top_recommendations == ['B'],
+            msg="unexpected results from recommend()"
+        )
+
     def tearDown(self):
         pass
