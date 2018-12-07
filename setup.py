@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="icf_recommend",
+    name="icf_recommender",
     version="0.0.1",
     author="Oni On",
     author_email="oni.on.qepa@gmail.com",
