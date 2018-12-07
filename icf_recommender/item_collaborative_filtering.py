@@ -17,9 +17,9 @@ class ItemCollaborativeFiltering:
     In a nutshell, the algorithm looks as follows:
 
     1. Create pairs of items (X, Y) using all the items in the catalog.
-    2. For every item pair (X, Y) compute the Rule Strength for the statement
+    2. For every item pair (X, Y) compute a score for the statement
     "Users who viewed/watched/bought X, also viewed/watched/bought Y"
-    3. For a given item X, the items Y are sorted according to Rule Strength in a decreasing order.
+    3. For a given item X, the items Y are sorted according to the score in a decreasing order.
     The top items Y are recommended to all users who viewed/watched/bought product X.
 
     For more details check the project `Wiki <https://github.com/oni-on/item-collaborative-filtering/wiki>`
@@ -55,6 +55,7 @@ class ItemCollaborativeFiltering:
         """
         self.item_column = item_column
         self.user_column = user_column
+        self.df_recommendations = pd.DataFrame()
 
     def __generate_item_pairs(self, df, item):
         """
@@ -239,12 +240,32 @@ class ItemCollaborativeFiltering:
 
         items, recommended_items = zip(*filtered_item_pairs)
 
-        df = pd.DataFrame({
-           'item': items,
-           'recommended_item': recommended_items,
-           'count_common_users': count_pair_users,
-           'expected_common_users': expected_pair_users,
-           'score': pair_score
+        df_recommendations = pd.DataFrame({
+            'item': items,
+            'recommended_item': recommended_items,
+            'count_common_users': count_pair_users,
+            'expected_common_users': expected_pair_users,
+            'score': pair_score
         })
 
-        return df
+        return df_recommendations
+
+    @staticmethod
+    def recommend(df_recommendations, item, n_recommendations=10):
+        """
+        Returns item recommendations
+        :param df_recommendations: dataframe with recommendations generated with fit_recommendations()
+        :param item: the item for which recommendations are generated
+        :param n_recommendations: the number of generated recommendations
+        :return: list of recommended products
+        """
+
+        recommended_items = df_recommendations[df_recommendations.item == item]
+        recommended_items = recommended_items.sort_values(
+            'score', ascending=False
+        ).groupby(
+            'item'
+        ).head(n_recommendations)['recommended_item'].values
+        return recommended_items
+
+
