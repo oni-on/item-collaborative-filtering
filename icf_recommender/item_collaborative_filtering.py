@@ -1,19 +1,62 @@
 """
-Item to Item Collaborative Filtering
-Paper: https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
+Item Based Collaborative Filtering
 """
+
+# Author Oni On <oni.on.qepa@gmail.com>
+
 from itertools import permutations
 
-from joblib import Parallel, delayed
 import numpy as np
 import pandas as pd
 
 
-class ItemItemCollaborativeFiltering:
+class ItemCollaborativeFiltering:
+    """
+    Item Based Collaborative Filtering: a recommendation algorithm by Amazon
+
+    In a nutshell, the algorithm looks as follows:
+
+    1. Create pairs of items (X, Y) using all the items in the catalog.
+    2. For every item pair (X, Y) compute a score for the statement
+    "Users who viewed/watched/bought X, also viewed/watched/bought Y"
+    3. For a given item X, the items Y are sorted according to the score in a decreasing order.
+    The top items Y are recommended to all users who viewed/watched/bought product X.
+
+    For more details check the project `Wiki <https://github.com/oni-on/item-collaborative-filtering/wiki>`
+
+    Parameters
+    ----------
+    item_column: str, default='item_id'. The name of the item id column in the dataframe
+    user_column: str, default='user_id'. The name of the user id column in the dataframe
+
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> import numpy as np
+    >>> import icf_recommender
+    >>> df = pd.read_csv("https://raw.githubusercontent.com/zygmuntz/goodbooks-10k/master/ratings.csv")
+    >>> df['liked'] = np.where(df.rating >= 5, 1, 0)
+    >>> df_liked = df.loc[df.liked == 1, ["user_id", "book_id"]]
+    >>> recommender = icf_recommender.ItemCollaborativeFiltering(item_column='book_id')
+    >>> df_recommendations = recommender.fit_recommendations(df=df_liked, item=4081)
+    >>> recommended_books = recommender.recommend(df_recommendations, 4081)
+
+    Attributes
+    ----------
+
+    References
+    ----------
+    https://www.computer.org/csdl/mags/ic/2017/03/mic2017030012.pdf
+    """
 
     def __init__(self, item_column='item_id', user_column='user_id'):
+        """
+        :param item_column: str, default='item_id'. The name of the item id column in the input dataframe
+        :param user_column: str, default='user_id'. The name of the user id column in the input dataframe
+        """
         self.item_column = item_column
         self.user_column = user_column
+        self.df_recommendations = pd.DataFrame()
 
     def __generate_item_pairs(self, df, item):
         """
@@ -160,13 +203,12 @@ class ItemItemCollaborativeFiltering:
         """
         return (actual_users - expected_users) * np.log(actual_users + 0.1) / np.sqrt(expected_users)
 
-    def fit_recommendations(self, df, item=None, processes=2):
+    def fit_recommendations(self, df, item=None):
         """
         Computes recommendation strength for item pairs
         By default item=None, means recommendations are computed for all items
         :param df: dataframe with columns [user_id, item_id]
         :param item: item that is scored with all other items, if None - all possible item pairs are scored
-        :param processes: (int) number of processes used for parallel computation
         :return: dataframe with columns [item, recommended_item, actual_common_users, expected_common_users, score]
         """
         item_pairs = self.__generate_item_pairs(df, item)
@@ -176,9 +218,7 @@ class ItemItemCollaborativeFiltering:
         self.__calculate_user_interactions(df)
 
         # output: [((item1, item2), common_users)]
-        count_pair_users = Parallel(n_jobs=processes)(
-           delayed(self.__count_common_item_pair_users)(item_pair) for item_pair in item_pairs
-        )
+        count_pair_users = [self.__count_common_item_pair_users(item_pair) for item_pair in item_pairs]
 
         # filter out item pairs with no users in common
         count_pair_users = list(
@@ -193,21 +233,40 @@ class ItemItemCollaborativeFiltering:
 
         # output: [expected_users]
         # compute expected users for item pairs with at least 1 user in common
-        expected_pair_users = Parallel(n_jobs=processes)(
-           delayed(self.__expected_common_item_pair_users)(df, item_pair) for item_pair in filtered_item_pairs
-        )
+        expected_pair_users = [self.__expected_common_item_pair_users(df, item_pair)
+                               for item_pair in filtered_item_pairs]
 
         # recommendation score function
         pair_score = self.__recommendations_score_function(np.array(expected_pair_users), np.array(count_pair_users))
 
         items, recommended_items = zip(*filtered_item_pairs)
 
-        df = pd.DataFrame({
-           'item': items,
-           'recommended_item': recommended_items,
-           'count_common_users': count_pair_users,
-           'expected_common_users': expected_pair_users,
-           'score': pair_score
+        df_recommendations = pd.DataFrame({
+            'item': items,
+            'recommended_item': recommended_items,
+            'count_common_users': count_pair_users,
+            'expected_common_users': expected_pair_users,
+            'score': pair_score
         })
 
-        return df
+        return df_recommendations
+
+    @staticmethod
+    def recommend(df_recommendations, item, n_recommendations=10):
+        """
+        Returns item recommendations
+        :param df_recommendations: dataframe with recommendations generated with fit_recommendations()
+        :param item: the item for which recommendations are generated
+        :param n_recommendations: the number of generated recommendations
+        :return: list of recommended products
+        """
+
+        recommended_items = df_recommendations[df_recommendations.item == item]
+        recommended_items = recommended_items.sort_values(
+            'score', ascending=False
+        ).groupby(
+            'item'
+        ).head(n_recommendations)['recommended_item'].values
+        return recommended_items
+
+
