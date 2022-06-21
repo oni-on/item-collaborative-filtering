@@ -19,7 +19,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'numpy==1.15.4',
+        'numpy==1.22.0',
         'pandas==0.23.4'
     ],
     python_requires='>=3'
